@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MerfiBoard</title>
+</head>
+<body>
+<link rel="stylesheet" href="css/style.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Caveat:wght@500&display=swap" rel="stylesheet">
+    <div class="s1">
+        <div class="logo">
+            <div class="logo-1 flex-box">
+                <img src="img/22.png">
+            </div>
+            <h1>MerfiBoard</h1>
+        </div>
+
+        <div id="board" class="board flex-box ">
+            
+            <div v-for="column in boardData" class="column">
+            <div>
+                <input  v-on:input="saveBoard" v-model="column.name" type="text">
+                <h2 v-on:click="deleteColumn(column)">x</h2>
+                <div class="card" v-for="card in column.cards" >
+                    <div v-on:dblclick="openModal(card)">
+                    <card :card="card" :column="column" :board="boardData" :visible="visible"></card>
+                    </div>
+                </div>
+                
+
+                <h4 v-on:click="addCard(column)">NEW CARD...</h4>
+            </div>
+            </div>
+            <button v-on:click="addColumn">+ column</button>
+
+            <div v-if="visible" id="modal-kit">
+                <div id="card-modal">
+                    <div v-on:click="closeModal()" id="close-modal">X</div>
+                    <input v-model="modalTitle" id="modal-title">
+                    <textarea v-model="modalDescription" id="modal-description"></textarea>
+                    <input type="number" name="chat_id" v-model="modalId" value="" id="modal-id" placeholder="id">
+                    <input type="url" class="token-message" name="chat_id" v-model="modalToken" value="" id="modal-token" placeholder="токен">  
+                    <input type="datetime-local" v-model="modalTime" id="modal-time">
+                    
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.2.0/jquery.min.js"></script>
+    <script src="https://unpkg.com/vue@next"></script>
+    <script>
+        function ISODateString(d){
+        function pad(n){return n<10 ? '0'+n : n}
+        return d.getFullYear()+'-'+ pad(d.getMonth()+1)+'-'+ pad(d.getDate())+'T'+ pad(d.getHours())+':'+ pad(d.getMinutes())}
+        let d = new Date();
+
+
+        let boardData = [];
+
+        setInterval(function(){
+            let boardJson = localStorage.getItem("data");
+            let boardData = JSON.parse(boardJson);
+            for (i in boardData) {
+                for(j in boardData[i].cards){
+                    let card = boardData[i].cards[j];
+                    
+                    let currentTime = new Date();
+                    currentTime = ISODateString(currentTime);
+                    if (card.time == currentTime) {
+                        let token = $('.token-message').val();
+                        $('.token-message').val('');
+                        let chat = $('.chat_id').val();
+                        $('.chat_id').val('');
+                        let url = "https://api.telegram.org/bot" + token + "/sendMessage?chat_id=" + id + "&text=" + card.title;
+                        //"https://api.telegram.org/bot2032045068:AAHsshxISoorloJuintgCISdE8pbR-_A8r0/sendMessage?chat_id=502430420&text="
+                        $.get(url);
+                        boardData[i].cards[j].time = '';
+                    }
+                }
+            }
+            let jsonToSave = JSON.stringify(boardData);
+            localStorage.setItem("data",jsonToSave);
+
+        },1000)
+
+        
+
+            if (localStorage.getItem("data") != "") {
+                boardData = JSON.parse(localStorage.getItem("data"));
+            }
+        
+        let board = Vue.createApp({
+            data() {
+                return {
+                    visible: false, 
+                    modalTitle: "",
+                    modalDescription: "",
+                    modalTime : "",
+                    modalId: "",
+                    modalToken: "",
+                    currentCard: null,
+                    boardData : boardData
+                }
+            },
+            methods : {
+                addCard(column){
+                    column.cards.push(
+                    {
+                        title: "", 
+                        description: ""
+                    })
+                },
+                deleteCard(column, card){
+                    let number = column.cards.indexOf(card)
+                    column.cards.splice(number,1);
+                    this.saveBoard();
+
+                },
+                deleteColumn(board, column){
+                    let number = this.boardData.indexOf(column)
+                    this.boardData.splice(number,1);
+                    this.saveBoard();
+
+                },
+                addColumn(){
+                    this.boardData.push(
+                        {
+                            name: "new",
+                            cards: []
+                        }
+                    )
+                },
+                openModal(card){
+                    this.visible = true
+                    this.modalTitle = card.title;
+                    this.modalDescription = card.description;
+                    this.modalTime = card.time;
+                    this.currentCard = card;
+                },
+                closeModal() {
+                    this.visible = false
+                    this.currentCard.title = this.modalTitle;
+                    this.currentCard.description = this.modalDescription;
+                    this.currentCard.time = this.modalTime;
+                    this.saveBoard();
+                },
+                saveBoard() {
+                    let json = JSON.stringify(this.boardData);
+                    localStorage.setItem("data", json);
+                    console.log(localStorage.getItem("data"));
+                }
+            }
+        });
+
+        board.component('card',{
+            props: ['card','column','board'],
+            template : `
+                    <textarea   v-on:input="saveBoard" v-model="card.title"></textarea>
+                    <div v-if="card.description">&#9733;</div>
+                    <div v-if="card.time">&#9993;</div>
+                    <h2 v-on:click="deleteCard(column,card)">x</h2>
+            
+            `,
+            methods: {
+                deleteCard(column, card){
+                    let number = column.cards.indexOf(card)
+                    column.cards.splice(number,1);
+                    this.saveBoard();
+                },
+                saveBoard() {
+                    let json = JSON.stringify(this.board);
+                    localStorage.setItem("data",json);
+                    console.log(localStorage.getItem("data"));
+                }
+            }
+
+        });
+
+        
+
+        board.mount("#board");
+    </script>  
+</body>
+</html>
